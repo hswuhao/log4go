@@ -26,14 +26,15 @@ author: HuangChuanTonG@WPS.cn
 ### 类关系：
 
 - Logger    -- 提供输出日志方法，如Info/Warn/Error。
-- Handlder  -- Logger可有多个handler，一个handler只能有1个IO线程。
+- Handlder  -- Logger可有多个Handler，一个Handler只能有1个IO线程。
 - Formatter -- 日志输出格式化类，纯方法类, 一个Logger只能有一个Formatter。
 - HandlerIOThread -- - Handler的io线程，包默认有1个后台线程。一个Handler只能一个io。
 - LogInstance -- 单条日志对象(未格式化前)，Logger.Info/Warn/Error函数后生成。
+- 限制：暂时不支持每个handler使用不同的Formatter，即Formatter跟Logger绑定
 
 
 ### 正常使用方式：
-```
+```go
 import(
    log "wps.cn/you-gopath/log4go"
 )
@@ -50,7 +51,7 @@ log模块接口是没用python-logging的，包含内部某些功能实现是也
 ```
 
 ### 包级别的方法：
-```
+```go
 import(
    log "wps.cn/you-gopath/log4go"
 )
@@ -99,7 +100,7 @@ func main(){
 }
 ```
 ### 改成 JSON 格式输出方法：
-```
+```go
 //方法一, package级别的WithField或WithFields, 会返回一个新logger实例
 log.WithField("k1", "myVal_1").Info("hello JSON")
 
@@ -137,7 +138,7 @@ log.Info("alway json ....")
 何一个logger只要调用 WithField/WithFields 紧接着的 Info/Warn/Error
 输出格式都会自动变成 json格式。
 
-```
+```go
 import(
    log "wps.cn/you-gopath/log4go"
 )
@@ -158,7 +159,7 @@ log.WithFields(log.Fields{
 ```
 
 ### 工程中，需要对输出 log 打tags的，建议使用模块实例，如
-```
+```go
 import(
    log "wps.cn/you-gopath/log4go"
 )
@@ -185,7 +186,7 @@ file对应的值，会被内置替换，无法输出xxxx。
 
 logrus的做法是：给key加前辍；但我暂时不打算修复这个bug。
 
-```
+```go
 const (
     keyFileNo = "file"
     keyTime   = "time"

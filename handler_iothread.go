@@ -169,10 +169,11 @@ func (self *HandleIOWriteThread) run() {
 	self.wg.Add(1)
 	defer self.wg.Done()
 	stop := false
+	var hw *hdlrWriter
 	var quitStartTime time.Time
 	for {
 		select {
-		case hw := <-self.handlerWriterChan:
+		case hw = <-self.handlerWriterChan:
 			self.doWrite(hw)
 		case <-self.quit:
 			stop = true
@@ -183,8 +184,20 @@ func (self *HandleIOWriteThread) run() {
 				return
 			}
 			if time.Since(quitStartTime) >= MAX_WAIT_TIME_ON_EXIT {
-				fmt.Printf("%s, but has log[%v] do not flush yet.",
-					"log package was Closed()", len(self.handlerWriterChan))
+				remain := len(self.handlerWriterChan)
+				self.dropCnt += int64(remain)
+
+				if remain > 0 {
+					fmt.Fprintf(os.Stdout,
+						"%s, but remain logs[%v] do not flush yet.",
+						"log package was Closed()", remain)
+
+					if self.dropLogCallbackFunc != nil {
+						hw = <-self.handlerWriterChan
+						self.dropLogCallbackFunc(hw.Log, self.dropCnt)
+					}
+				}
+				return
 			}
 		}
 	}
@@ -196,11 +209,6 @@ func (self *HandleIOWriteThread) Close() {
 		return
 	}
 	self.clsoed = true
-	sum := self.writeCnt + self.dropCnt
-	dropRate := (float64(self.dropCnt) / float64(sum)) * 100.0
-
-	fmt.Printf("[%s] IoThread.Close() writeCnt=[%d] dropCnt=[%d] dropRate=[%.2f%%]\n",
-		self.name, self.writeCnt, self.dropCnt, dropRate)
 
 	select {
 	case self.quit <- true:
@@ -208,4 +216,13 @@ func (self *HandleIOWriteThread) Close() {
 	default:
 		return
 	}
+}
+
+func (self *HandleIOWriteThread) Stat() (name string, writeSum int64, dropSum int64) {
+	return self.name, self.writeCnt, self.dropCnt
+}
+
+// 测试用函数
+func GlobalIOThreadStat() (name string, writeSum int64, dropSum int64) {
+	return globalWriteThread.Stat()
 }

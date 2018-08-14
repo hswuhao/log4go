@@ -80,7 +80,7 @@ import (
 	"sync"
 	"testing"
 
-	"wps.cn/lib/go/log"
+	log "github.com/kingsoft-wps/log4go"
 )
 
 func BenchmarkMutilLogger(b *testing.B) {

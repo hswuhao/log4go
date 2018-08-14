@@ -1,13 +1,14 @@
 package log4go_test
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"runtime"
 	"sync"
 	"testing"
 
-	"wps.cn/lib/go/log"
+	log "github.com/kingsoft-wps/log4go"
 )
 
 func TestStdStreamLog(t *testing.T) {
@@ -104,22 +105,21 @@ func TestRotatingFileLog(t *testing.T) {
 
 }
 
-func TestChangeStdHandler(t *testing.T) {
-	fh, err := log.NewFileHandler("/dev/null")
-	if err != nil {
-		t.Fatalf("err=%v", err.Error())
-		panic(err.Error())
-	}
-	log.SetHandler(fh)
-	log.Info("file handler.....")
-}
-
 func TestMain(m *testing.M) {
 
 	runtime.GOMAXPROCS(runtime.NumCPU() * 2)
 
 	n := m.Run()
 	log.Close()
-	println(".....TestMain exit..... CPU=", runtime.NumCPU())
+
+	name, write, drop := log.GlobalIOThreadStat()
+	sum := write + drop
+	dropRate := (float64(drop) / float64(sum)) * 100.0
+
+	fmt.Printf("[%s]IOThread written=[%d] dropCnt=[%d] dropRate=[%.2f%%]\n",
+		name, write, drop, dropRate)
+
+	fmt.Printf(".....TestMain exit..... CPU = %d\n", runtime.NumCPU())
+
 	os.Exit(n)
 }
