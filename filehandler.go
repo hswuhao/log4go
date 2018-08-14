@@ -9,64 +9,69 @@ import (
 
 //FileHandler writes log to a file.
 type FileHandler struct {
-	fd *os.File
+	*StreamHandler //匿名继承，写少些代码
+	fd             *os.File
+	fileName       string
 }
 
-func NewFileHandler(fileName string, flag int) (*FileHandler, error) {
+func NewFileHandler(fileName string) (*FileHandler, error) {
 	dir := path.Dir(fileName)
-	os.Mkdir(dir, 0777)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		fmt.Printf("file does not exist")
+		if err := os.Mkdir(dir, 0777); err != nil {
+			if os.ErrExist != err {
+				return nil, err
+			}
+		}
+	}
 
-	f, err := os.OpenFile(fileName, flag, 0)
+	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
 
 	h := new(FileHandler)
-
+	h.StreamHandler, _ = NewStreamHandler(f)
 	h.fd = f
+	h.fileName = fileName
+	// h := &FileHandler{&StreamHandler{f, nil}, f, fileName}
 
 	return h, nil
 }
 
-func (h *FileHandler) Write(b []byte) (n int, err error) {
-	return h.fd.Write(b)
-}
-
 func (h *FileHandler) Close() error {
-	return h.fd.Close()
+	if h.fd != nil {
+		return h.fd.Close()
+	}
+	return nil
 }
 
-//RotatingFileHandler writes log a file, if file size exceeds maxBytes, 
+//RotatingFileHandler writes log a file, if file size exceeds maxBytes,
 //it will backup current file and open a new one.
 //
 //max backup file number is set by backupCount, it will delete oldest if backups too many.
 type RotatingFileHandler struct {
-	fd *os.File
+	*FileHandler
 
-	fileName    string
 	maxBytes    int
 	backupCount int
 }
 
 func NewRotatingFileHandler(fileName string, maxBytes int, backupCount int) (*RotatingFileHandler, error) {
-	dir := path.Dir(fileName)
-	os.Mkdir(dir, 0777)
-
-	h := new(RotatingFileHandler)
-
 	if maxBytes <= 0 {
 		return nil, fmt.Errorf("invalid max bytes")
 	}
 
-	h.fileName = fileName
-	h.maxBytes = maxBytes
-	h.backupCount = backupCount
-
-	var err error
-	h.fd, err = os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	fh, err := NewFileHandler(fileName)
 	if err != nil {
 		return nil, err
 	}
+
+	h := new(RotatingFileHandler)
+	h.FileHandler = fh
+	h.fileName = fileName
+	h.maxBytes = maxBytes
+	h.backupCount = backupCount
 
 	return h, nil
 }
@@ -74,13 +79,6 @@ func NewRotatingFileHandler(fileName string, maxBytes int, backupCount int) (*Ro
 func (h *RotatingFileHandler) Write(p []byte) (n int, err error) {
 	h.doRollover()
 	return h.fd.Write(p)
-}
-
-func (h *RotatingFileHandler) Close() error {
-	if h.fd != nil {
-		return h.fd.Close()
-	}
-	return nil
 }
 
 func (h *RotatingFileHandler) doRollover() {
@@ -112,13 +110,13 @@ func (h *RotatingFileHandler) doRollover() {
 	}
 }
 
-//TimeRotatingFileHandler writes log to a file, 
+//TimeRotatingFileHandler writes log to a file,
 //it will backup current and open a new one, with a period time you sepecified.
 //
 //refer: http://docs.python.org/2/library/logging.handlers.html.
 //same like python TimedRotatingFileHandler.
 type TimeRotatingFileHandler struct {
-	fd *os.File
+	*FileHandler
 
 	baseName   string
 	interval   int64
@@ -134,11 +132,15 @@ const (
 )
 
 func NewTimeRotatingFileHandler(baseName string, when int8, interval int) (*TimeRotatingFileHandler, error) {
-	dir := path.Dir(baseName)
-	os.Mkdir(dir, 0777)
+	fh, err := NewFileHandler(baseName)
+
+	if err != nil {
+		return nil, err
+	}
 
 	h := new(TimeRotatingFileHandler)
 
+	h.FileHandler = fh
 	h.baseName = baseName
 
 	switch when {
@@ -159,12 +161,6 @@ func NewTimeRotatingFileHandler(baseName string, when int8, interval int) (*Time
 	}
 
 	h.interval = h.interval * int64(interval)
-
-	var err error
-	h.fd, err = os.OpenFile(h.baseName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
 
 	fInfo, _ := h.fd.Stat()
 	h.rolloverAt = fInfo.ModTime().Unix() + h.interval
@@ -193,8 +189,4 @@ func (h *TimeRotatingFileHandler) doRollover() {
 func (h *TimeRotatingFileHandler) Write(b []byte) (n int, err error) {
 	h.doRollover()
 	return h.fd.Write(b)
-}
-
-func (h *TimeRotatingFileHandler) Close() error {
-	return h.fd.Close()
 }
