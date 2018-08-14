@@ -36,7 +36,7 @@ author: HuangChuanTonG@WPS.cn
 ### 正常使用方式：
 ```go
 import(
-   log "wps.cn/you-gopath/log4go"
+   log "github.com/kingsoft-wps/log4go"
 )
 
 log.Info("hello world") 
@@ -53,7 +53,7 @@ log模块接口是没用python-logging的，包含内部某些功能实现是也
 ### 包级别的方法：
 ```go
 import(
-   log "wps.cn/you-gopath/log4go"
+   log "github.com/kingsoft-wps/log4go"
 )
 // 定义一个丢日志的回调函数：
 func dropLogCallback(l *log.LogInstance, sum int64) {
@@ -140,7 +140,7 @@ log.Info("alway json ....")
 
 ```go
 import(
-   log "wps.cn/you-gopath/log4go"
+   log "github.com/kingsoft-wps/log4go"
 )
 
 log.WithField("k1", "v1").WithField("k2","v22").Info("I am log msg.")
@@ -161,7 +161,7 @@ log.WithFields(log.Fields{
 ### 工程中，需要对输出 log 打tags的，建议使用模块实例，如
 ```go
 import(
-   log "wps.cn/you-gopath/log4go"
+   log "github.com/kingsoft-wps/log4go"
 )
 
 type TB_mgr struct{
